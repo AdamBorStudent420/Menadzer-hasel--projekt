@@ -84,7 +84,7 @@ def setup_databases():
 
 setup_databases()
 
-#Haszuje hasło używając bcrypt
+#Haszuje hasło używając pbkfd2
 def _hash_password(password: str, salt: bytes) -> bytes:
     pwd_bytes = password.encode('utf-8')
     iterations = 100000 
@@ -693,4 +693,5 @@ def test_encryption_roundtrip(haslo):
         else:
             messagebox.showerror("Błąd", f"Odszyfrowana treść różni się od oryginału!\nOryginał: {haslo}\nWynik: {decrypted}")
     except Exception as e:
+
         messagebox.showerror("Błąd", f"WYJĄTEK PODCZAS TESTU: {str(e)}")
