@@ -1,2 +1,2 @@
-# Menad-er-hase---projekt
+# Menadzer hasel - projekt
 Menadżer haseł - aplikacja do przechowywania zaszyfrowanych haseł 
