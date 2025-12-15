@@ -150,15 +150,76 @@ python MH_GUI.py
 
 ## Wymagania do projektu:
 * Generowanie i przechowywanie master password (PBKDF2 z solą, 100k iteracji):
-  
-<img width="626" height="104" alt="Zrzut ekranu 2025-12-15 222907" src="https://github.com/user-attachments/assets/ac757fc3-a390-41e2-b80e-c70f513da056" />
 
+```python
+# Fragment pliku: fun.py
+def _hash_password(password: str, salt: bytes) -> bytes:
+    pwd_bytes = password.encode('utf-8')
+    iterations = 100000 
+    hash_bytes = hashlib.pbkdf2_hmac('sha256', pwd_bytes, salt, iterations, dklen=32)
+    return hash_bytes.hex()
+```
 <br><br>
 
 * Baza danych SQLite:
 
-<img width="762" height="855" alt="Zrzut ekranu 2025-12-15 223103" src="https://github.com/user-attachments/assets/160c96b1-57a7-41d4-b51f-13f8167c846b" />
+```python
+# Fragment pliku: fun.py
+def setup_databases():
+    #Tworzy pliki baz danych i tabele, jeśli nie istnieją.
+    try:
+        with sqlite3.connect(db_path1) as conn:
+            cursor = conn.cursor()
+            #Tabela do przechowywania kluczy
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS Keys (
+                    ID INTEGER PRIMARY KEY AUTOINCREMENT,
+                    Web_Name TEXT NOT NULL,
+                    Login TEXT NOT NULL,
+                    Password TEXT NOT NULL,
+                    Catalog_ID INTEGER,
+                    Date_Created TEXT NOT NULL,
+                    Date_Modified TEXT NOT NULL,
+                    FOREIGN KEY(Catalog_ID) REFERENCES Catalogs(ID)
+                );
+            ''')
+            
+            #Tabela do przechowywania jednego haszu hasła głównego
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS MasterKey (
+                    ID INTEGER PRIMARY KEY CHECK (ID = 1), -- Gwarantuje tylko jeden wiersz
+                    hash TEXT NOT NULL,
+                    salt BLOB NOT NULL
+                );
+            ''')
+            
+            #Druga baza danych - katalogi
+            cursor.execute("ATTACH DATABASE ? AS katalog", (str(db_path2),))
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS katalog.Catalogs (
+                    ID INTEGER PRIMARY KEY AUTOINCREMENT,
+                    Catalog TEXT NOT NULL UNIQUE
+                );
+            ''')
+            
+            #Dodaje startowe katalogi jeśli tabela jest pusta
+            cursor.execute("SELECT COUNT(*) FROM katalog.Catalogs")
+            liczba_katalogow = cursor.fetchone()[0]
+            
+            #Jeśli 0, to znaczy że to świeża baza (lub użytkownik usunął wszystko)
+            if liczba_katalogow == 0:
+                domyslne_katalogi = ["Social Media", "Poczta E-mail", "Bankowość", "Praca", "Rozrywka"]
+                for kat in domyslne_katalogi:
+                    try:
+                        cursor.execute("INSERT INTO katalog.Catalogs (Catalog) VALUES (?)", (kat,))
+                    except sqlite3.IntegrityError:
+                        pass
+            conn.commit()
 
+    except sqlite3.Error as e:
+        print(f"Wystąpił krytyczny błąd podczas inicjalizacji bazy danych: {e}")
+        sys.exit()
+```
 <br><br>
 
 * Funkcjonalność: dodawanie, usuwanie, wyświetlanie haseł:
@@ -187,5 +248,176 @@ def encrypt_password(pwd: str, specific_key=None) -> str:
     aesgcm = AESGCM(key)
     nonce = os.urandom(12)
     ciphertext = aesgcm.encrypt(nonce, pwd.encode(), None)
+    return urlsafe_b64encode(nonce + ciphertext).decode()  
+```
+* Generator silnych haseł:
+
+<img width="1016" height="306" alt="Zrzut ekranu 2025-12-15 224715" src="https://github.com/user-attachments/assets/6da9a2ff-f0b2-435c-b38f-38419acdac4a" />
+
+<br><br>
+
+* Obsługa błędów rozszerzona (plik uszkodzony, bezpieczny logout):
+
+<img width="355" height="212" alt="Zrzut ekranu 2025-12-15 224913" src="https://github.com/user-attachments/assets/1aed92e8-5afb-493c-9534-badd3b1f7b6b" />
+
+<br><br>
+
+* Szyfrowanie bazy danych (IV + salt przechowywane bezpiecznie):
+
+```python
+# Fragment pliku: fun.py
+def encrypt_password(pwd: str, specific_key=None) -> str:
+    key = specific_key if specific_key else master_key_bytes
+    
+    if not key:
+        raise ValueError("Błąd szyfrowania: Brak klucza (nie zalogowano lub brak klucza backupu)")
+
+    aesgcm = AESGCM(key)
+    nonce = os.urandom(12)
+    ciphertext = aesgcm.encrypt(nonce, pwd.encode(), None)
     return urlsafe_b64encode(nonce + ciphertext).decode()
 
+def add_key(web_name, login, password, catalog):
+    wn = web_name.get()
+    lg = login.get()
+    passw = password.get()
+    cat = catalog.get()
+    if not cat:
+        cat_id = None
+    else:
+        cat_id = _get_catalog_id(cat) 
+        
+    teraz = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    
+    try:
+        with sqlite3.connect(db_path1) as conn:
+            cursor = conn.cursor()
+            encrypted = encrypt_password(passw)
+            
+            #Date_Created i Date_Modified na start są takie same
+            cursor.execute("""
+                INSERT INTO Keys (Web_Name, Login, Password, Catalog_ID, Date_Created, Date_Modified) 
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, (wn, lg, encrypted, cat_id, teraz, teraz))
+            
+            conn.commit()
+        messagebox.showinfo("Sukces", "Hasło dodane!")
+        return True
+    except Exception as e:
+        messagebox.showerror("Błąd zapisu", f"Nie udało się zapisać hasła: {e}")
+        return False
+```
+* Prosty GUI (Tkinter):
+
+<img width="1340" height="551" alt="Zrzut ekranu 2025-12-15 225549" src="https://github.com/user-attachments/assets/afa7bd40-50b1-48d9-867f-a353e8ddf481" />
+
+<br><br>
+
+* Eksport/import haseł (CSV, format zaszyfrowany):
+
+<img width="1340" height="551" alt="Zrzut ekranu 2025-12-15 225549" src="https://github.com/user-attachments/assets/15a892e5-d981-49ca-99ce-03999b0fc102" />
+
+<br><br>
+
+* Sprawdzenie siły hasła (entropy estimate:
+
+<img width="547" height="31" alt="Zrzut ekranu 2025-12-15 225746" src="https://github.com/user-attachments/assets/e15e9162-7292-4b7f-b42a-0571c6c899cf" />
+```python
+# Fragment pliku: fun.py
+def ocen_sile_hasla(password):
+    if not password:
+        return "Brak hasła", "#cccccc" #Szary
+
+    #Określenie wielkości puli znaków
+    pool_size = 0
+    if any(c in string.ascii_lowercase for c in password): pool_size += 26
+    if any(c in string.ascii_uppercase for c in password): pool_size += 26
+    if any(c in string.digits for c in password): pool_size += 10
+    if any(c in string.punctuation for c in password): pool_size += 32
+    
+    if pool_size == 0 and len(password) > 0:
+        pool_size = 50 
+
+    #Obliczenie entropii (w bitach)
+    entropy = len(password) * math.log2(pool_size)
+
+    #Klasyfikacja siły na podstawie bitów entropii
+    if entropy < 28:
+        return "Bardzo słabe hasło", "#ff3333" # Czerwony
+    elif entropy < 36:
+        return "Słabe hasło", "#ff9933"       # Pomarańczowy
+    elif entropy < 60:
+        return "Średnie hasło", "#ffff33"     # Żółty
+    elif entropy < 128:
+        return "Silne hasło", "#99ff33"       # Jasnozielony
+    else:
+        return "Bardzo silne hasło", "#33cc33" # Ciemnozielony
+```
+
+<br><br>
+
+* Copy-to-clipboard (auto-clear po 30 sec):
+```python
+# Fragment pliku: MH_GUI.py
+    def kopiuj_do_schowka(self, tekst, nazwa_pola="Dane"):
+        if not tekst:
+            return
+
+        #Kopiowanie
+        self.clipboard_clear()
+        self.clipboard_append(tekst)
+        self.update()
+        
+        #Zapamiętujemy, co skopiowaliśmy, aby później sprawdzić przy czyszczeniu
+        self.ostatni_skopiowany_tekst = tekst
+        
+        #Anulowanie poprzedniego licznika (jeśli istnieje)
+        if self.clipboard_timer:
+            self.after_cancel(self.clipboard_timer)
+            
+        #Ustawienie nowego licznika na 30 sekund (30000 ms)
+        self.clipboard_timer = self.after(30000, self.wyczysc_schowek)
+        
+    def wyczysc_schowek(self):
+        try:
+            #Pobieramy aktualną zawartość schowka
+            aktualna_zawartosc = self.clipboard_get()
+            
+            #Czyścimy tylko wtedy, gdy w schowku nadal jest to samo hasło.
+            #Jeśli użytkownik w międzyczasie skopiował coś innego, nie ruszamy tego.
+            if aktualna_zawartosc == self.ostatni_skopiowany_tekst:
+                self.clipboard_clear()
+                
+                #Nadpisujemy pustym stringiem (bezpieczniej dla Windows)
+                self.clipboard_append("")
+                
+                #Wymuszamy aktualizację zdarzeń systemowych
+                self.update()
+                print("DEBUG: Schowek wyczyszczony automatycznie.")
+            else:
+                print("DEBUG: Zawartość schowka zmieniona przez użytkownika. Nie czyszczę.")
+                
+        except tk.TclError:
+            pass
+        finally:
+            self.clipboard_timer = None
+            self.ostatni_skopiowany_tekst = None
+```
+
+<br><br>
+
+* Testy: roundtrip (szyfruj → odszyfruj → porównaj):
+```python
+# Fragment pliku: fun.py
+def test_encryption_roundtrip(haslo):
+    try:
+        encrypted = encrypt_password(haslo)
+        decrypted = decrypt_password(encrypted)
+        if decrypted == haslo:
+            messagebox.showinfo("Sukces", f"Mechanizm szyfrowania działa poprawnie.\n\nOryginał: {haslo}\nWynik deszyfrowania: {decrypted}")
+        else:
+            messagebox.showerror("Błąd", f"Odszyfrowana treść różni się od oryginału!\nOryginał: {haslo}\nWynik: {decrypted}")
+    except Exception as e:
+
+        messagebox.showerror("Błąd", f"WYJĄTEK PODCZAS TESTU: {str(e)}")
+```
