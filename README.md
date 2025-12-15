@@ -381,6 +381,7 @@ def generate_key(x, y, z):
 * Obsługa błędów rozszerzona (plik uszkodzony, bezpieczny logout):
 
 <img width="355" height="212" alt="Zrzut ekranu 2025-12-15 224913" src="https://github.com/user-attachments/assets/1aed92e8-5afb-493c-9534-badd3b1f7b6b" />
+
 ```python
 # Fragment pliku: MH_GUI.py
     def close_app(self, parent=None):
