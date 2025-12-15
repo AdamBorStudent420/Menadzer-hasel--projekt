@@ -279,6 +279,7 @@ def remove_key(ID):
 * Obsługa błędów podstawowych (niepoprawne hasło):
 
 <img width="817" height="202" alt="Zrzut ekranu 2025-12-15 223934" src="https://github.com/user-attachments/assets/f8598649-7c85-4723-a22f-2648e73f0e32" />
+
 ```python
 # Fragment pliku: MH_GUI.py
     def sprawdz_haslo(entry_widget, parent_window, login_window):
