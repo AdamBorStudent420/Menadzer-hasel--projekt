@@ -7,7 +7,6 @@ from base64 import urlsafe_b64encode, urlsafe_b64decode
 from contextlib import closing
 from datetime import datetime 
 
-# ----------  SZYFRUJĄCY KLUCZ  ----------
 master_key_bytes = None # 32-bajtowy klucz główny
 
 DB_NAME_1 = "keys.db"
@@ -121,6 +120,13 @@ def is_new_user() -> bool:
 def set_initial_master_password(password: str):
     global master_key_bytes
     
+    min_dlugosc = 8
+    specjal_znak = any(char in string.punctuation for char in password)
+
+    if len(password) < min_dlugosc or not specjal_znak or not any(c.isupper() for c in password) or not any(c.isdigit() for c in password):
+        messagebox.showerror("Słabe hasło", f"Hasło musi mieć co najmniej:\n- {min_dlugosc} znaków,\n- jeden znak specjalny,\n- jedną dużą literę,\n- jedną cyfrę.")
+        return
+    
     kdf_salt = os.urandom(16)
     new_hash = _hash_password(password, kdf_salt)
     try:
@@ -157,12 +163,7 @@ def _authenticate_user(password: str) -> bool:
         return False
 
 #Funkcja do generowania hasła
-def generate_key(x, y, z):
-    
-    # x - ilość wszystkich znaków
-    # y - ilość znaków specjalnych
-    # z - hasło
-    
+def generate_key(x, y, z):    
     try:
         num = x.get()
         if not num:
@@ -480,8 +481,22 @@ def aktualizuj_haslo_wpisu(id_wpisu, nowe_haslo):
 def _change_master_password(old_pass, new_pass, new_pass_2):
     #Bezpiecznie zmienia hasło główne, ponownie szyfrując wszystkie dane
     global master_key_bytes
+    min_dlugosc = 8
     
-    #KROK 1: UWIERZYTELNIENIE I PRZYGOTOWANIE STAREGO KLUCZA ---
+    new_pass1 = new_pass.get()
+    new_pass2 = new_pass_2.get()
+    specjal_znak = any(char in string.punctuation for char in new_pass1)
+    
+    if not new_pass1 or new_pass1 != new_pass2:
+        messagebox.showerror("Błąd", "Hasła są niezgodne lub puste.")
+        return
+
+    if len(new_pass1) < min_dlugosc or not specjal_znak or not any(c.isupper() for c in new_pass1) or not any(c.isdigit() for c in new_pass1):
+        messagebox.showerror("Słabe hasło", f"Hasło musi mieć co najmniej:\n- {min_dlugosc} znaków,\n- jeden znak specjalny,\n- jedną dużą literę,\n- jedną cyfrę.")
+        return
+    
+    #--------------------------------------------------------------------------------------------------
+    #UWIERZYTELNIENIE I PRZYGOTOWANIE STAREGO KLUCZA ---
     with sqlite3.connect(db_path1) as conn:
         cursor = conn.cursor()
         cursor.execute("SELECT hash, salt FROM MasterKey WHERE ID = 1")
@@ -500,20 +515,12 @@ def _change_master_password(old_pass, new_pass, new_pass_2):
     #Tworzymy stary klucz
     old_key_bytes = _create_cipher(current_password, master_salt)
 
-    #KROK 2: POBRANIE NOWEGO HASŁA I STWORZENIE NOWEGO KLUCZA (AES-GCM) ---
-    new_pass1 = new_pass.get()
-    new_pass2 = new_pass_2.get()
-
-    if not new_pass1 or new_pass1 != new_pass2:
-        messagebox.showerror("Błąd", "Hasła są niezgodne lub puste.")
-        return
-
     # Tworzymy składniki dla nowego hasła
     new_salt = os.urandom(16)
     new_hash = _hash_password(new_pass1, new_salt)
     new_key_bytes = _create_cipher(new_pass1, new_salt)
 
-    #KROK 3: PONOWNE SZYFROWANIE DANYCH ---
+    #PONOWNE SZYFROWANIE DANYCH ---
     try:
         with sqlite3.connect(db_path1) as conn:
             cursor = conn.cursor()
