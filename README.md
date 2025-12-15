@@ -159,6 +159,7 @@ def _hash_password(password: str, salt: bytes) -> bytes:
     hash_bytes = hashlib.pbkdf2_hmac('sha256', pwd_bytes, salt, iterations, dklen=32)
     return hash_bytes.hex()
 ```
+
 <br><br>
 
 * Baza danych SQLite:
@@ -220,6 +221,7 @@ def setup_databases():
         print(f"Wystąpił krytyczny błąd podczas inicjalizacji bazy danych: {e}")
         sys.exit()
 ```
+
 <br><br>
 
 * Funkcjonalność: dodawanie, usuwanie, wyświetlanie haseł:
@@ -274,6 +276,7 @@ def remove_key(ID):
         messagebox.showerror("Błąd", f"Nie udało się usunąć klucza: {e}")
         return False
 ```
+
 <br><br>
 
 * Obsługa błędów podstawowych (niepoprawne hasło):
@@ -313,6 +316,7 @@ def _authenticate_user(password: str) -> bool:
     else:
         return False
 ```
+
 <br><br>
 
 * Szyfrowanie AES-256-GCM:
@@ -330,6 +334,9 @@ def encrypt_password(pwd: str, specific_key=None) -> str:
     ciphertext = aesgcm.encrypt(nonce, pwd.encode(), None)
     return urlsafe_b64encode(nonce + ciphertext).decode()  
 ```
+
+<br><br>
+
 * Generator silnych haseł:
 
 <img width="1016" height="306" alt="Zrzut ekranu 2025-12-15 224715" src="https://github.com/user-attachments/assets/6da9a2ff-f0b2-435c-b38f-38419acdac4a" />
@@ -406,6 +413,7 @@ def wyczysc_dane_sesji():
         #Nadpisujemy zmienną, aby utrudnić odczyt z pamięci RAM
         master_key_bytes = None
 ```
+
 <br><br>
 
 * Szyfrowanie bazy danych (IV + salt przechowywane bezpiecznie):
@@ -453,6 +461,9 @@ def add_key(web_name, login, password, catalog):
         messagebox.showerror("Błąd zapisu", f"Nie udało się zapisać hasła: {e}")
         return False
 ```
+
+<br><br>
+
 * Prosty GUI (Tkinter):
 
 <img width="1340" height="551" alt="Zrzut ekranu 2025-12-15 225549" src="https://github.com/user-attachments/assets/afa7bd40-50b1-48d9-867f-a353e8ddf481" />
@@ -468,6 +479,7 @@ def add_key(web_name, login, password, catalog):
 * Sprawdzenie siły hasła (entropy estimate:
 
 <img width="547" height="31" alt="Zrzut ekranu 2025-12-15 225746" src="https://github.com/user-attachments/assets/e15e9162-7292-4b7f-b42a-0571c6c899cf" />
+
 ```python
 # Fragment pliku: fun.py
 def ocen_sile_hasla(password):
@@ -503,6 +515,7 @@ def ocen_sile_hasla(password):
 <br><br>
 
 * Copy-to-clipboard (auto-clear po 30 sec):
+
 ```python
 # Fragment pliku: MH_GUI.py
     def kopiuj_do_schowka(self, tekst, nazwa_pola="Dane"):
@@ -553,6 +566,7 @@ def ocen_sile_hasla(password):
 <br><br>
 
 * Testy: roundtrip (szyfruj → odszyfruj → porównaj):
+  
 ```python
 # Fragment pliku: fun.py
 def test_encryption_roundtrip(haslo):
@@ -567,3 +581,6 @@ def test_encryption_roundtrip(haslo):
 
         messagebox.showerror("Błąd", f"WYJĄTEK PODCZAS TESTU: {str(e)}")
 ```
+
+<br><br>
+
