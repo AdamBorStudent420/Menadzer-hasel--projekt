@@ -227,12 +227,91 @@ def setup_databases():
 <img width="1045" height="324" alt="Zrzut ekranu 2025-12-15 223241" src="https://github.com/user-attachments/assets/11ac2cfc-dcc6-45d1-9eb4-85f05e56d4f3" />
 <img width="1304" height="512" alt="Zrzut ekranu 2025-12-15 223752" src="https://github.com/user-attachments/assets/ce22131a-457d-409a-a1f5-ad520c5130ba" />
 
+```python
+# Fragment pliku: fun.py
+def add_key(web_name, login, password, catalog):
+    wn = web_name.get()
+    lg = login.get()
+    passw = password.get()
+    cat = catalog.get()
+    if not cat:
+        cat_id = None
+    else:
+        cat_id = _get_catalog_id(cat) 
+        
+    teraz = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    
+    try:
+        with sqlite3.connect(db_path1) as conn:
+            cursor = conn.cursor()
+            encrypted = encrypt_password(passw)
+            
+            #Date_Created i Date_Modified na start są takie same
+            cursor.execute("""
+                INSERT INTO Keys (Web_Name, Login, Password, Catalog_ID, Date_Created, Date_Modified) 
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, (wn, lg, encrypted, cat_id, teraz, teraz))
+            
+            conn.commit()
+        messagebox.showinfo("Sukces", "Hasło dodane!")
+        return True
+    except Exception as e:
+        messagebox.showerror("Błąd zapisu", f"Nie udało się zapisać hasła: {e}")
+        return False
+```
+```python
+# Fragment pliku: fun.py
+def remove_key(ID): 
+    try:
+        with sqlite3.connect(db_path1) as conn:
+            cursor = conn.cursor()
+            cursor.execute("DELETE FROM Keys WHERE ID = ?", (ID,))
+            conn.commit()
+            
+        messagebox.showinfo("Sukces", "Klucz usunięty.")
+        return True
+    except Exception as e:
+        messagebox.showerror("Błąd", f"Nie udało się usunąć klucza: {e}")
+        return False
+```
 <br><br>
 
 * Obsługa błędów podstawowych (niepoprawne hasło):
 
 <img width="817" height="202" alt="Zrzut ekranu 2025-12-15 223934" src="https://github.com/user-attachments/assets/f8598649-7c85-4723-a22f-2648e73f0e32" />
+```python
+# Fragment pliku: MH_GUI.py
+    def sprawdz_haslo(entry_widget, parent_window, login_window):
+        password = entry_widget.get()
+        
+        if fun._authenticate_user(password):
+            parent_window.deiconify()
+            login_window.destroy()
+        else:
+            messagebox.showerror("Błąd", "Nieprawidłowe hasło.")
+```
+```python
+# Fragment pliku: fun.py
+def _authenticate_user(password: str) -> bool:
+    global master_key_bytes
+    master_hash = None
+    master_salt = None
+    
+    #Pobiera hasz z bazy
+    with sqlite3.connect(db_path1) as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT hash, salt FROM MasterKey WHERE ID = 1")
+        result = cursor.fetchone()
+        if result:
+            master_hash = result[0]
+            master_salt = result[1]
 
+    if _check_password(password, master_hash, master_salt):
+        master_key_bytes = _create_cipher(password, master_salt)
+        return True
+    else:
+        return False
+```
 <br><br>
 
 * Szyfrowanie AES-256-GCM:
@@ -253,13 +332,77 @@ def encrypt_password(pwd: str, specific_key=None) -> str:
 * Generator silnych haseł:
 
 <img width="1016" height="306" alt="Zrzut ekranu 2025-12-15 224715" src="https://github.com/user-attachments/assets/6da9a2ff-f0b2-435c-b38f-38419acdac4a" />
-
+```python
+# Fragment pliku: fun.py
+def generate_key(x, y, z):    
+    try:
+        num = x.get()
+        if not num:
+            messagebox.showerror("Błąd", "Pole 'Ilość znaków' jest puste.")
+            return
+        num_int = int(num)
+        if num_int <= 0:
+            messagebox.showerror("Błąd", "Ilość znaków musi być większa od zera!")
+            return
+        
+        num_spec = y.get()
+        num_spec_int = int(num_spec)
+        if num_spec_int < 0:
+            messagebox.showerror("Błąd", "Ilość znaków specjalnych nie może być ujemna!")
+            return
+        if num_spec_int > num_int:
+            messagebox.showerror(
+                "Błąd", "Ilość znaków specjalnych nie może przekraczać całkowitej liczby znaków.")
+            return
+        
+        #Litery i cyfry
+        general_chars = string.ascii_letters + string.digits 
+        
+        #Znaki specjalne
+        special_chars = string.punctuation
+        
+        password_list = ([secrets.choice(special_chars) for _ in range(num_spec_int)] + [secrets.choice(general_chars) for _ in range(num_int - num_spec_int)])
+        
+        #Bezpieczne mieszanie listy (SystemRandom używa systemowego źródła RNG)
+        random.SystemRandom().shuffle(password_list)
+        password = ''.join(password_list)
+        
+        z.delete(0, tk.END)
+        z.insert(0, f"{password}")
+    except ValueError:
+        messagebox.showerror("Błąd", "W polu 'Ilość znaków' musi być liczba!")
+```
 <br><br>
 
 * Obsługa błędów rozszerzona (plik uszkodzony, bezpieczny logout):
 
 <img width="355" height="212" alt="Zrzut ekranu 2025-12-15 224913" src="https://github.com/user-attachments/assets/1aed92e8-5afb-493c-9534-badd3b1f7b6b" />
-
+```python
+# Fragment pliku: MH_GUI.py
+    def close_app(self, parent=None):
+        target = parent if parent else self
+        
+        if messagebox.askokcancel("Zamknij", "Czy na pewno chcesz zamknąć aplikację?", parent=target):
+            fun.wyczysc_dane_sesji()
+            
+            try:
+                self.clipboard_clear()
+            except tk.TclError:
+                pass
+            
+            self.destroy()
+            self.quit()
+        else:
+            pass
+```
+```python
+# Fragment pliku: fun.py
+def wyczysc_dane_sesji():
+    global master_key_bytes
+    if master_key_bytes:
+        #Nadpisujemy zmienną, aby utrudnić odczyt z pamięci RAM
+        master_key_bytes = None
+```
 <br><br>
 
 * Szyfrowanie bazy danych (IV + salt przechowywane bezpiecznie):
