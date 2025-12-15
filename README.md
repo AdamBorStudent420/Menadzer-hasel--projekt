@@ -333,6 +333,7 @@ def encrypt_password(pwd: str, specific_key=None) -> str:
 * Generator silnych haseł:
 
 <img width="1016" height="306" alt="Zrzut ekranu 2025-12-15 224715" src="https://github.com/user-attachments/assets/6da9a2ff-f0b2-435c-b38f-38419acdac4a" />
+
 ```python
 # Fragment pliku: fun.py
 def generate_key(x, y, z):    
@@ -373,6 +374,7 @@ def generate_key(x, y, z):
     except ValueError:
         messagebox.showerror("Błąd", "W polu 'Ilość znaków' musi być liczba!")
 ```
+
 <br><br>
 
 * Obsługa błędów rozszerzona (plik uszkodzony, bezpieczny logout):
