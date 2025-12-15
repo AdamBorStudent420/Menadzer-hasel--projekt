@@ -164,6 +164,28 @@ python MH_GUI.py
 * Funkcjonalność: dodawanie, usuwanie, wyświetlanie haseł:
 
 <img width="1045" height="324" alt="Zrzut ekranu 2025-12-15 223241" src="https://github.com/user-attachments/assets/11ac2cfc-dcc6-45d1-9eb4-85f05e56d4f3" />
+<img width="1304" height="512" alt="Zrzut ekranu 2025-12-15 223752" src="https://github.com/user-attachments/assets/ce22131a-457d-409a-a1f5-ad520c5130ba" />
 
 <br><br>
+
+* Obsługa błędów podstawowych (niepoprawne hasło):
+
+<img width="817" height="202" alt="Zrzut ekranu 2025-12-15 223934" src="https://github.com/user-attachments/assets/f8598649-7c85-4723-a22f-2648e73f0e32" />
+
+<br><br>
+
+* Szyfrowanie AES-256-GCM:
+
+```python
+# Fragment pliku: fun.py
+def encrypt_password(pwd: str, specific_key=None) -> str:
+    key = specific_key if specific_key else master_key_bytes
+    
+    if not key:
+        raise ValueError("Błąd szyfrowania: Brak klucza (nie zalogowano lub brak klucza backupu)")
+
+    aesgcm = AESGCM(key)
+    nonce = os.urandom(12)
+    ciphertext = aesgcm.encrypt(nonce, pwd.encode(), None)
+    return urlsafe_b64encode(nonce + ciphertext).decode()
 
