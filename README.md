@@ -132,13 +132,13 @@ python MH_GUI.py
 
 <br><br>
 
-8.Zmiana hasła głównego
+8. Zmiana hasła głównego
 
 <img width="1056" height="512" alt="Image" src="https://github.com/user-attachments/assets/cd92503c-df58-4a3d-8e84-6c7a047b8d10" />
 
 <br><br>
 
-9.Kopia zapasowa
+9. Kopia zapasowa
 
 <img width="1050" height="521" alt="Image" src="https://github.com/user-attachments/assets/19bede23-a76e-48da-8eaf-526a1d501681" />
 
@@ -467,7 +467,154 @@ def add_key(web_name, login, password, catalog):
 
 * Eksport/import haseł (CSV, format zaszyfrowany):
 
-<img width="1340" height="551" alt="Zrzut ekranu 2025-12-15 225549" src="https://github.com/user-attachments/assets/15a892e5-d981-49ca-99ce-03999b0fc102" />
+<img width="978" height="472" alt="Zrzut ekranu 2025-12-15 225653" src="https://github.com/user-attachments/assets/0741c603-b91b-4ee2-92c7-9f6a25460f72" />
+
+```python
+# Fragment pliku: fun.py
+#Pobiera wszystkie dane z bazy i odszyfrowuje hasła
+def get_all_decrypted_data():
+    try:
+        with closing(get_connection()) as conn:
+            cursor = conn.cursor()
+            query = """
+            SELECT 
+                k.Web_Name, 
+                k.Login, 
+                k.Password,
+                IFNULL(c.Catalog, '')
+            FROM Keys k
+            LEFT JOIN katalog.Catalogs c ON k.Catalog_ID = c.ID
+            """
+            cursor.execute(query)
+            rows = cursor.fetchall()
+            
+            decrypted_data = []
+            for row in rows:
+                wn, lg, enc_pass, cat = row
+                plain_pass = decrypt_password(enc_pass)
+                decrypted_data.append({
+                    "Strona": wn,
+                    "Login": lg,
+                    "Haslo": plain_pass,
+                    "Katalog": cat
+                })
+            return decrypted_data
+    except Exception as e:
+        print(f"Błąd pobierania danych do eksportu: {e}")
+        return []
+```
+
+```python
+# Fragment pliku: fun.py
+#Funkcja do eksportowania CSV
+def export_csv(filepath):
+    data = get_all_decrypted_data()
+    if not data:
+        messagebox.showwarning("Pusto", "Brak danych do wyeksportowania.")
+        return
+
+    try:
+        with open(filepath, mode='w', newline='', encoding='utf-8') as file:
+            writer = csv.writer(file)
+            # Nagłówki
+            writer.writerow(["Strona", "Login", "Haslo", "Katalog"])
+            for item in data:
+                writer.writerow([item["Strona"], item["Login"], item["Haslo"], item["Katalog"]])
+        messagebox.showinfo("Sukces", "Dane wyeksportowane do CSV (niezaszyfrowane!).")
+    except Exception as e:
+        messagebox.showerror("Błąd", f"Nie udało się zapisać pliku: {e}")
+```
+
+```python
+# Fragment pliku: fun.py
+#Funkcja do importowania CSV
+def import_csv(filepath):
+    try:
+        count = 0
+        with open(filepath, mode='r', newline='', encoding='utf-8') as file:
+            reader = csv.reader(file)
+            try:
+                header = next(reader)
+            except StopIteration:
+                pass
+
+            for row in reader:
+                if len(row) >= 3:
+                    wn = row[0]
+                    lg = row[1]
+                    pw = row[2]
+                    cat = row[3] if len(row) > 3 else ""
+                    
+                    if add_entry_direct(wn, lg, pw, cat):
+                        count += 1
+        return count
+    except Exception as e:
+        messagebox.showerror("Błąd", f"Nie udało się zaimportować pliku: {e}")
+        return 0
+```
+
+```python
+# Fragment pliku: fun.py
+#Funkcja do eksportowania zaszyfrowanego pliku
+def export_encrypted(filepath, backup_password):
+    data = get_all_decrypted_data()
+    if not data:
+        messagebox.showwarning("Pusto", "Brak danych do wyeksportowania.")
+        return
+
+    try:
+        json_str = json.dumps(data)
+        
+        salt = os.urandom(16)
+        backup_key = _create_cipher(backup_password, salt)        
+        encrypted_blob = encrypt_password(json_str, specific_key=backup_key)
+
+        final_content = {"salt_hex": salt.hex(),"data": encrypted_blob}
+        
+        with open(filepath, 'w', encoding='utf-8') as f:
+            json.dump(final_content, f)
+            
+        messagebox.showinfo("Sukces", "Wykonano zaszyfrowaną kopię zapasową.")
+        
+    except Exception as e:
+        messagebox.showerror("Błąd", f"Błąd eksportu zaszyfrowanego: {e}")
+```
+
+```python
+# Fragment pliku: fun.py
+#Funkcja do importowania zaszyfrowanego pliku
+def import_encrypted(filepath, backup_password):
+    try:
+        with open(filepath, 'r', encoding='utf-8') as f:
+            file_content = json.load(f)
+            
+        salt_hex = file_content.get("salt_hex")
+        encrypted_blob = file_content.get("data")
+        
+        if not salt_hex or not encrypted_blob:
+            raise ValueError("Niepoprawny format pliku backupu.")
+            
+        salt = bytes.fromhex(salt_hex)
+        backup_key = _create_cipher(backup_password, salt)
+        
+        json_str = decrypt_password(encrypted_blob, specific_key=backup_key)
+        
+        if json_str == "BŁĄD ODCZYTU HASŁA":
+            messagebox.showerror("Błąd", "Nieprawidłowe hasło do pliku backupu!")
+            return 0
+            
+        data = json.loads(json_str)
+        count = 0
+        for item in data:
+            if add_entry_direct(item["Strona"], item["Login"], item["Haslo"], item["Katalog"]):
+                count += 1
+                
+        return count
+        
+    except Exception as e:
+        messagebox.showerror("Błąd", f"Nie udało się zaimportować: {e}")
+        return 0
+```
 
 <br><br>
 
