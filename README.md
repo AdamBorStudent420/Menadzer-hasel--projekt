@@ -149,3 +149,21 @@ python MH_GUI.py
 <img width="1050" height="521" alt="Image" src="https://github.com/user-attachments/assets/19bede23-a76e-48da-8eaf-526a1d501681" />
 
 ## Wymagania do projektu:
+* Generowanie i przechowywanie master password (PBKDF2 z solą, 100k iteracji):
+  
+<img width="626" height="104" alt="Zrzut ekranu 2025-12-15 222907" src="https://github.com/user-attachments/assets/ac757fc3-a390-41e2-b80e-c70f513da056" />
+
+<br><br>
+
+* Baza danych SQLite:
+
+<img width="762" height="855" alt="Zrzut ekranu 2025-12-15 223103" src="https://github.com/user-attachments/assets/160c96b1-57a7-41d4-b51f-13f8167c846b" />
+
+<br><br>
+
+* Funkcjonalność: dodawanie, usuwanie, wyświetlanie haseł:
+
+<img width="1045" height="324" alt="Zrzut ekranu 2025-12-15 223241" src="https://github.com/user-attachments/assets/11ac2cfc-dcc6-45d1-9eb4-85f05e56d4f3" />
+
+<br><br>
+
