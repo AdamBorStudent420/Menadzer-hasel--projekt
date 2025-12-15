@@ -93,7 +93,7 @@ class LoginManager:
                 parent_app.deiconify()
                 setup_window.destroy()
             else:
-                messagebox.showerror("Błąd", "Wystąpił błąd podczas zapisywania hasła.")
+                return
 
         btn = tk.Button(setup_window, text="Zapisz hasło", width=15, command=zatwierdz)
         btn.grid(row=4, column=0, padx=5, pady=5)
@@ -274,16 +274,7 @@ class App(tk.Tk):
             
             self.pokaz_ramke("dane_logowania")
             self.wczytaj_dane_z_bazy()
-    """ 
-    # Funkcja do pokazywania/ukrywania pola "Własny katalog"
-    def obsluga_katalogu(self, event):
-        if self.combo_cat.get() == "Inne":
-            self.lbl_new_cat.grid()
-            self.entry_new_cat.grid()
-        else:
-            self.lbl_new_cat.grid_remove()
-            self.entry_new_cat.grid_remove()
-    """        
+     
     def kopiuj_do_schowka(self, tekst, nazwa_pola="Dane"):
         if not tekst:
             return
