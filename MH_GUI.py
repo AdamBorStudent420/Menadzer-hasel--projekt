@@ -522,9 +522,6 @@ class App(tk.Tk):
         tk.Label(FF_1, text="Historia elementu:", font=("Arial", 8, "bold")).grid(row=8, column=0, sticky="w", padx=10)
         tk.Label(FF_1, text=f"Data dodania: {d_d}", font=("Arial", 8)).grid(row=9, column=0, sticky="w", padx=10)
         tk.Label(FF_1, text=f"Data modyfikacji: {d_m}", font=("Arial", 8)).grid(row=10, column=0, sticky="w", padx=10)
-        
-        lbl_data_mod = tk.Label(FF_1, text=f"Data modyfikacji: {d_m}", font=("Arial", 8))
-        lbl_data_mod.grid(row=9, column=0, sticky="w", padx=10)
             
         B5 = tk.Button(self.frame_klucz, text = "Usuń klucz", width = 15, height=1, command=usun_klucz)
         B5.grid(row=6, column=0, padx=10, pady=5, sticky='w')
